@@ -27,9 +27,19 @@ import {
  * cms_list_property_groups (or create a group) before creating these types, and
  * stamp a `group` onto each property below.
  *
- * The exact property-type tokens (e.g. "link", "contentReference", the content-
- * area "array"/"content" shape) are conventional here and CONFIRMED in Phase 7
- * against the live model via cms_get_content_type_details.
+ * PROPERTY-TYPE TOKENS — verified against the Optimizely CMS (SaaS) docs, not
+ * guessed. "string", "boolean", "richText", "link", "contentReference", "content"
+ * and "array" are all first-class CMS (SaaS) data types; rich text and links are
+ * DEDICATED types (not string+format), and a list is `array` with an `items` data
+ * type. `allowedTypes` is a validation field that applies to the `content` /
+ * `contentReference` data types, so on a content-area array it belongs on the
+ * content-typed ITEMS, not on the array property itself.
+ * Ref: https://docs.developers.optimizely.com/content-management-system/v1.0.0-CMS-SaaS/docs/content-types-saas
+ *
+ * Phase 7 reconciles only the genuine INSTANCE facts docs can't tell us:
+ * enabledLocales, the root container GUID, whether to reuse existing Hero/
+ * Testimonial blocks instead of these Lp* types, and any required property group —
+ * verified live via cms_get_content_type_details.
  */
 
 /** The single-source experience type identity (also used by the payload builder). */
