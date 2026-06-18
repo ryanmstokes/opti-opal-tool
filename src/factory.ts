@@ -14,7 +14,16 @@ export const pageConfigSchema = z.object({
   description: z.string().optional(),
   theme: z
     .object({
-      accent: z.string().default("#2563eb"),
+      // Hex only. accent is interpolated into the <style> block, where esc()
+      // does NOT neutralise CSS metacharacters — a free string would allow CSS
+      // injection (e.g. "red; } body { … }"), so constrain it to a hex colour.
+      accent: z
+        .string()
+        .regex(
+          /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/,
+          "accent must be a hex colour like #2563eb"
+        )
+        .default("#2563eb"),
       font: z
         .enum(["system", "serif", "mono"])
         .default("system"),

@@ -77,33 +77,45 @@ export const extractImageSlots = (html: string): ImageSlot[] => {
 };
 
 /**
- * Deterministically swap each resolved placeholder for its url using a LITERAL
- * string replace (the url is never interpreted as a regex). Slots whose url is
- * still null are left in place and reported. This is the ONLY sanctioned way to
- * put real images into a page — the agent must never hand-edit the html.
+ * Deterministically swap each resolved placeholder for its url. Slots map 1:1 to
+ * the `<img>` tags in document order (that is the order `extractImageSlots`
+ * produced them), so we consume placeholders POSITIONALLY: each slot replaces the
+ * next occurrence of its token at or after a moving cursor. This is a literal
+ * substring substitution (the url is never interpreted as a regex) and — unlike a
+ * global replace — it handles duplicate tokens correctly: two images that share an
+ * identical token (same alt + same dimensions) each get their own distinct url
+ * instead of the first url clobbering both. Slots whose url is still null are kept
+ * in place and reported. This is the ONLY sanctioned way to put real images into a
+ * page — the agent must never hand-edit the html.
  */
 export const applyImages = (
   html: string,
   images: ReadonlyArray<{ placeholder: string; url: string | null; alt?: string }>
 ): { html: string; warnings: string[] } => {
   const warnings: string[] = [];
-  const replaced = new Set<string>();
-  let out = html;
+  let out = "";
+  let cursor = 0;
   for (const slot of images) {
+    const idx = html.indexOf(slot.placeholder, cursor);
+    if (idx === -1) {
+      warnings.push(
+        `Image placeholder "${slot.placeholder}" not found in html at/after the expected position (already replaced, missing, or images out of order).`
+      );
+      continue;
+    }
+    out += html.slice(cursor, idx);
     if (slot.url == null || slot.url === "") {
+      out += slot.placeholder; // keep the unresolved placeholder in place
       warnings.push(
         `Image placeholder "${slot.placeholder}" left unresolved (no url) — kept in place.${
           slot.alt ? ` Alt: "${slot.alt}".` : ""
         }`
       );
-      continue;
+    } else {
+      out += slot.url; // literal substitution; url is not interpreted
     }
-    if (out.includes(slot.placeholder)) {
-      out = out.split(slot.placeholder).join(slot.url); // literal, global, no regex
-      replaced.add(slot.placeholder);
-    } else if (!replaced.has(slot.placeholder)) {
-      warnings.push(`Image placeholder "${slot.placeholder}" not found in html.`);
-    }
+    cursor = idx + slot.placeholder.length;
   }
+  out += html.slice(cursor);
   return { html: out, warnings };
 };

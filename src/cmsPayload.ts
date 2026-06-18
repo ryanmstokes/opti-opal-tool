@@ -6,6 +6,7 @@ import {
   assertCompositionIsString,
   assertNoDamRefs,
   assertNoNodeIds,
+  assertContentAreaItems,
 } from "./cmsHelpers.js";
 
 /*
@@ -15,8 +16,13 @@ import {
  * an LpExperience whose Visual Builder composition holds one component node per
  * section. Everything is a real JSON object EXCEPT Properties.composition, which
  * is a serialized JSON STRING (the tool framework corrupts nested node arrays
- * otherwise — gotcha #3). The gotcha guards run before emit so a regression
- * fails loudly rather than silently no-op-ing against the CMS.
+ * otherwise — gotcha #3).
+ *
+ * Gotcha guards run before emit so a regression fails loudly rather than silently
+ * no-op-ing against the CMS: #2 (no stringified objects), #3 (composition is a
+ * string), #6 (no node ids), #7 (content-area item shape), #8 (no dam refs).
+ * Gotcha #1 (contentReference is a bare string) is construction-enforced — mapProps
+ * emit no image refs in v1 and contentRef() only ever returns a string.
  */
 
 export interface BuildExperienceOpts {
@@ -114,7 +120,8 @@ export const buildExperiencePayload = (
   // Run guards on the OBJECT tree before stringifying.
   assertNoStringifiedObjects(composition, "$.composition");
   assertNoDamRefs(composition, "$.composition");
-  assertNoNodeIds(composition.nodes, "$.composition.nodes");
+  assertNoNodeIds(composition, "$.composition");
+  assertContentAreaItems(composition, "$.composition");
 
   // gotcha #3: composition leaves as a serialized string — and ONLY composition.
   const compositionString = JSON.stringify(composition);

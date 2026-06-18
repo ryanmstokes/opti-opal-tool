@@ -135,3 +135,37 @@ export const assertNoNodeIds = (value: unknown, path = "$"): void => {
     for (const [k, v] of Object.entries(value)) assertNoNodeIds(v, `${path}.${k}`);
   }
 };
+
+/**
+ * Gotcha #7: every content-area ITEM must be EITHER { reference } OR
+ * { contentType, content } with NO extra fields (no name/typeIdentifier/
+ * attributes). Content-area items are identified as ARRAY ELEMENTS carrying a
+ * `contentType` or `reference` key — the experience node's `component` object is
+ * a property value (not an array element), so it is never mis-flagged.
+ */
+export const assertContentAreaItems = (value: unknown, path = "$"): void => {
+  if (Array.isArray(value)) {
+    value.forEach((el, i) => {
+      if (el && typeof el === "object" && !Array.isArray(el)) {
+        const keys = Object.keys(el as object);
+        const isItem = keys.includes("contentType") || keys.includes("reference");
+        if (isItem) {
+          const okInline =
+            keys.includes("contentType") &&
+            keys.every((k) => k === "contentType" || k === "content");
+          const okReference = keys.length === 1 && keys[0] === "reference";
+          if (!(okInline || okReference)) {
+            throw new Error(
+              `Content-area item at ${path}[${i}] has invalid keys [${keys.join(", ")}]; must be {reference} or {contentType, content} only.`
+            );
+          }
+        }
+      }
+      assertContentAreaItems(el, `${path}[${i}]`);
+    });
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const [k, v] of Object.entries(value)) assertContentAreaItems(v, `${path}.${k}`);
+  }
+};

@@ -6,6 +6,7 @@ import {
   assertCompositionIsString,
   assertNoDamRefs,
   assertNoNodeIds,
+  assertContentAreaItems,
   link,
   contentRef,
 } from "./cmsHelpers.js";
@@ -94,6 +95,13 @@ throws(() => assertNoStringifiedObjects({ Properties: { x: JSON.stringify({ a: 1
 throws(() => assertCompositionIsString({ nodeType: "experience" }), "assertCompositionIsString throws on a non-string");
 throws(() => assertNoDamRefs({ img: "cms://content/dam/abc123" }), "assertNoDamRefs throws on a dam ref");
 throws(() => assertNoNodeIds([{ id: "x", nodeType: "component" }]), "assertNoNodeIds throws on a node with an id");
+throws(
+  () => assertContentAreaItems([{ contentType: "LpFeature", content: {}, name: "extra" }]),
+  "assertContentAreaItems throws on a content-area item with extra fields"
+);
+// A valid {contentType, content} item and the node's component object must NOT throw.
+assertContentAreaItems(composition);
+assert(true, "assertContentAreaItems passes on the real composition (no false positive on node.component)");
 
 // Helper sanity.
 assert(JSON.stringify(link("Go", "/x")) === JSON.stringify({ url: "/x", title: "Go" }), "link() builds a {url,title} object");

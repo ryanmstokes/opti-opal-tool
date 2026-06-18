@@ -116,6 +116,17 @@ const linkSchema = z.object({
  * known tradeoff with a documented Phase-8 upgrade path (see per-component notes).
  */
 
+/*
+ * SINGLE-SOURCE keys for the broken-out item content types. Each key is defined
+ * exactly ONCE here and referenced by the parent's content-area `itemType`, that
+ * parent's mapProps `contentType`, and ITEM_CMS_TYPES below — so a Phase-7 rename
+ * is a one-line change. (Page-level component keys live in each component's
+ * `cms.typeKey`; the experience key in cmsTypes.EXPERIENCE_TYPE.)
+ */
+const LP_FEATURE = "LpFeature";
+const LP_PRICING_TIER = "LpPricingTier";
+const LP_GALLERY_IMAGE = "LpGalleryImage";
+
 /* -------------------------------- navbar ---------------------------------- */
 
 const navbar = def({
@@ -402,12 +413,13 @@ const featureGrid = def({
     compositionBehaviors: ["sectionEnabled"],
     properties: [
       { name: "heading", cmsType: "string" },
-      { name: "features", cmsType: "contentArea", itemType: "LpFeature", allowedTypes: ["LpFeature"] },
+      // allowedTypes is derived from itemType by the type generator — set once.
+      { name: "features", cmsType: "contentArea", itemType: LP_FEATURE },
     ],
     mapProps: (p) => {
       const out: Record<string, unknown> = {
         features: p.features.map((f) => ({
-          contentType: "LpFeature",
+          contentType: LP_FEATURE,
           content: { title: f.title, body: richTextHtml(f.body) },
         })),
       };
@@ -528,12 +540,12 @@ const pricingTable = def({
     compositionBehaviors: ["sectionEnabled"],
     properties: [
       { name: "heading", cmsType: "string" },
-      { name: "tiers", cmsType: "contentArea", itemType: "LpPricingTier", allowedTypes: ["LpPricingTier"] },
+      { name: "tiers", cmsType: "contentArea", itemType: LP_PRICING_TIER },
     ],
     mapProps: (p) => {
       const out: Record<string, unknown> = {
         tiers: p.tiers.map((t) => ({
-          contentType: "LpPricingTier",
+          contentType: LP_PRICING_TIER,
           content: {
             name: t.name,
             price: t.price,
@@ -676,14 +688,14 @@ const gallery = def({
     compositionBehaviors: ["sectionEnabled"],
     properties: [
       { name: "heading", cmsType: "string" },
-      { name: "images", cmsType: "contentArea", itemType: "LpGalleryImage", allowedTypes: ["LpGalleryImage"] },
+      { name: "images", cmsType: "contentArea", itemType: LP_GALLERY_IMAGE },
     ],
     mapProps: (p) => {
       const out: Record<string, unknown> = {
         images: p.images.map((img) => {
           const content: Record<string, unknown> = {};
           if (img.caption) content.caption = img.caption;
-          return { contentType: "LpGalleryImage", content };
+          return { contentType: LP_GALLERY_IMAGE, content };
         }),
       };
       if (p.heading) out.heading = p.heading;
@@ -837,7 +849,7 @@ const ctaBanner = def({
  */
 export const ITEM_CMS_TYPES: CmsItemTypeDef[] = [
   {
-    typeKey: "LpFeature",
+    typeKey: LP_FEATURE,
     baseType: "_component",
     properties: [
       { name: "title", cmsType: "string" },
@@ -846,7 +858,7 @@ export const ITEM_CMS_TYPES: CmsItemTypeDef[] = [
     ],
   },
   {
-    typeKey: "LpPricingTier",
+    typeKey: LP_PRICING_TIER,
     baseType: "_component",
     properties: [
       { name: "name", cmsType: "string" },
@@ -858,7 +870,7 @@ export const ITEM_CMS_TYPES: CmsItemTypeDef[] = [
     ],
   },
   {
-    typeKey: "LpGalleryImage",
+    typeKey: LP_GALLERY_IMAGE,
     baseType: "_component",
     properties: [
       { name: "image", cmsType: "contentReference", allowedTypes: ["_image"] },
