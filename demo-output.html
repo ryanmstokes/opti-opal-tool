@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acme Analytics — Ship Faster</title>
+<meta name="description" content="Real-time product analytics for teams that move fast.">
+<meta property="og:title" content="Acme Analytics — Ship Faster">
+<style>
+  :root { --accent: #7c3aed; --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font); color: #1a1a1a; line-height: 1.55; }
+  img { max-width: 100%; height: auto; display: block; border-radius: 8px; background: #eef1f6; }
+  h1 { font-size: clamp(2rem, 5vw, 3.25rem); margin: 0 0 .5em; }
+  h2.section-heading { text-align: center; font-size: 2rem; margin: 0 0 1.5rem; }
+  .lead { font-size: 1.2rem; color: #4b5563; }
+  section { padding: 4rem 1.5rem; max-width: 1100px; margin: 0 auto; }
+  .btn { display: inline-block; padding: .8rem 1.6rem; border-radius: 8px; text-decoration: none; font-weight: 600; margin-right: .75rem; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+  .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+  .hero-ctas { margin-top: 1.5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
+  .card { padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 12px; }
+  .card h3 { margin-top: 0; }
+  .testimonial { text-align: center; max-width: 720px; }
+  .testimonial blockquote { font-size: 1.4rem; font-style: italic; margin: 0 0 1rem; }
+  .cta-banner { text-align: center; background: var(--accent); color: #fff; border-radius: 16px; }
+  .cta-banner h2 { margin-top: 0; }
+  .cta-banner .btn-primary { background: #fff; color: var(--accent); }
+  @media (max-width: 720px) { .hero { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<section class="hero">
+      <div class="hero-text">
+        <h1>Know what your users do — instantly</h1>
+        <p class="lead">Acme Analytics turns raw events into clear answers, so your team ships the right thing.</p>
+        <div class="hero-ctas">
+        <a class="btn btn-primary" href="/signup">Start free</a>
+        <a class="btn btn-secondary" href="/demo">Book a demo</a>
+        </div>
+      </div>
+      <div class="hero-media"><img src="{{IMAGE:1200x600:dashboard-showing-a-live-user-activity-c}}" alt="dashboard showing a live user activity chart" width="1200" height="600" loading="lazy" class="hero-img"></div>
+    </section>
+
+<section class="features">
+      <h2 class="section-heading">Why teams choose Acme</h2>
+      <div class="grid">
+        <div class="card"><h3>Live dashboards</h3><p>See events the moment they happen, no batch delays.</p></div>
+        <div class="card"><h3>No-code funnels</h3><p>Build conversion funnels by dragging and dropping steps.</p></div>
+        <div class="card"><h3>Privacy-first</h3><p>EU-hosted, GDPR-ready, and cookieless by default.</p></div>
+      </div>
+    </section>
+
+<section class="testimonial">
+      <blockquote>&ldquo;We cut our reporting time from days to minutes.&rdquo;</blockquote>
+      <p class="attribution"><strong>Jordan Lee</strong> &middot; Head of Growth, Northwind</p>
+    </section>
+
+<section class="cta-banner">
+      <h2>Ready to see your data clearly?</h2>
+      <a class="btn btn-primary" href="/signup">Start free</a>
+    </section>
+</body>
+</html>
