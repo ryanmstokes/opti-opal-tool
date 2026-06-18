@@ -9,6 +9,7 @@
     "dev": "tsx watch src/server.ts",
     "demo": "tsx src/demo.ts",
     "test:images": "tsx src/apply-images-test.ts",
+    "test:cms": "tsx src/cms-payload-test.ts",
     "cms:types": "tsx src/cms-types-demo.ts"
   },
   "dependencies": {
