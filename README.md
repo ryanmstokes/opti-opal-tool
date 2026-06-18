@@ -15,20 +15,49 @@ Component registry  ──derives──>  Manifest ──┐
 ```
 
 - **`src/components.ts`** — the registry. Each component is ONE object owning its
-  zod schema, its manifest spec, and its render function. Manifest and factory
-  both derive from this, so they can never drift.
-- **`src/factory.ts`** — page config schema, `buildManifest()`, and `renderPage()`.
-  Invalid sections are skipped with a warning rather than failing the whole page.
-- **`src/prompt.ts`** — `buildPrompt()` assembles the manifest + rules + a worked
-  example; this is what the agent reads to produce a valid config.
-- **`src/server.ts`** — two Opal tools:
+  zod schema, its manifest spec, its render function, and (optionally) its `cms`
+  descriptor. Manifest, factory, prompt and the CMS type generator all derive
+  from this, so they can never drift. Components: `navbar`, `hero`, `logoStrip`,
+  `stats`, `featureGrid`, `testimonial`, `pricingTable`, `faq`, `gallery`,
+  `richText`, `contactForm`, `ctaBanner`.
+- **`src/factory.ts`** — page config schema, `buildManifest()`, and `renderPage()`,
+  which also returns one `ImageSlot` per image placeholder. Invalid sections are
+  skipped with a warning rather than failing the whole page.
+- **`src/prompt.ts`** — `buildPrompt()` assembles the manifest + rules + a full
+  worked example; this is what the agent reads to produce a valid config.
+- **`src/cmsTypes.ts`** — `buildContentTypeDefinitions()`: ordered
+  `cms_create_content_type` payloads derived from the registry.
+- **`src/cmsPayload.ts`** — `buildExperiencePayload()`: a validated config → the
+  exact `cms_update_content_item` upsert for an editable Optimizely Experience.
+- **`src/cmsHelpers.ts`** — pure CMS value builders (`link`, `contentRef`,
+  `richTextHtml`) and the gotcha-assertion guards.
+- **`src/server.ts`** — five Opal tools:
   - `get_landing_page_spec` — returns manifest + prompt + example (call first).
-  - `render_landing_page` — takes a config, returns HTML.
+  - `render_landing_page` — takes a config, returns `{ html, images, warnings, instructions }`.
+  - `apply_images` — deterministically swaps image placeholders for real URLs.
+  - `get_cms_content_types` — ordered CMS content-type definitions (one-time setup).
+  - `build_cms_experience` — config → CMS experience upsert payload.
+
+See [docs/AGENT_INSTRUCTIONS.md](docs/AGENT_INSTRUCTIONS.md) for the exact agent
+orchestration (HTML path and CMS path).
 
 ## Image placeholders
 
 The AI never invents image URLs. It supplies `imageAlt`; the factory emits
-`{{IMAGE:1200x600:slug}}`. A downstream step or human swaps these for real assets.
+`{{IMAGE:1200x600:slug}}` and lists every placeholder in the render response's
+`images` array. The agent fills each `url` and calls `apply_images` (a literal,
+deterministic swap) — it never edits the HTML itself. On the CMS path, image
+references are left unset in v1 and surfaced as warnings to fill in the editor.
+
+## Scripts
+
+```bash
+npm run build         # tsc
+npm run demo          # render the worked example → demo-output.html
+npm run test:images   # apply_images round-trip test
+npm run test:cms      # experience payload + gotcha-guard test
+npm run cms:types     # print ordered CMS content-type definitions
+```
 
 ## Run
 
