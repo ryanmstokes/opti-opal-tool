@@ -3,8 +3,14 @@ import express, {
   type Response,
   type NextFunction,
 } from "express";
-import { ZodError } from "zod";
-import { pageConfigSchema, buildManifest, renderPage } from "./factory.js";
+import { z, ZodError } from "zod";
+import {
+  pageConfigSchema,
+  buildManifest,
+  renderPage,
+  RENDER_INSTRUCTIONS,
+} from "./factory.js";
+import { applyImages, type ImageSlot } from "./html.js";
 import { buildPrompt, EXAMPLE_CONFIG } from "./prompt.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -47,7 +53,7 @@ app.get("/discovery", (_req, res) => {
       {
         name: "render_landing_page",
         description:
-          "Renders a landing page config into a complete, styled, self-contained HTML document. Images are emitted as {{IMAGE:WxH:slug}} placeholders to be replaced with real assets later. Returns html plus any per-section validation warnings.",
+          "Renders a landing page config into a complete, styled, self-contained HTML document. Returns { html, images, warnings, instructions }. Images are emitted as {{IMAGE:WxH:slug}} placeholders and listed in `images` (one slot per placeholder, url:null). You MUST return the html to the user EXACTLY as provided — do not edit, reformat or regenerate it. The ONLY permitted change is replacing image placeholders, which you do by filling each image's `url` and calling apply_images — never by editing the html yourself. See the `instructions` field.",
         endpoint: "/tools/render_landing_page",
         http_method: "POST",
         parameters: [
@@ -56,6 +62,28 @@ app.get("/discovery", (_req, res) => {
             type: "object",
             description:
               "A page config object: { title, description?, theme?, sections[] }. See get_landing_page_spec for the exact shape and rules.",
+            required: true,
+          },
+        ],
+      },
+      {
+        name: "apply_images",
+        description:
+          "Deterministically replaces {{IMAGE:WxH:slug}} placeholders in a rendered page with real asset URLs. Pass the html from render_landing_page and the same images array with each url filled in (leave url null for any image you don't have yet). Returns { html, warnings }; warnings list any placeholder left unresolved. This is the ONLY way to put images into the page — do NOT edit the html string by hand.",
+        endpoint: "/tools/apply_images",
+        http_method: "POST",
+        parameters: [
+          {
+            name: "html",
+            type: "string",
+            description: "The exact html string returned by render_landing_page.",
+            required: true,
+          },
+          {
+            name: "images",
+            type: "array",
+            description:
+              "The images array from render_landing_page, each item { placeholder, alt, width, height, url }. Fill `url` for images you have; leave null otherwise.",
             required: true,
           },
         ],
@@ -89,8 +117,8 @@ app.post("/tools/render_landing_page", requireBearer, (req, res) => {
         ? params.config
         : params;
     const config = renderParamsSchema.parse(raw);
-    const { html, warnings } = renderPage(config);
-    res.json({ html, warnings, character_count: html.length });
+    const { html, images, warnings } = renderPage(config);
+    res.json({ html, images, warnings, instructions: RENDER_INSTRUCTIONS });
   } catch (err) {
     if (err instanceof ZodError) {
       return res
@@ -102,11 +130,45 @@ app.post("/tools/render_landing_page", requireBearer, (req, res) => {
   }
 });
 
+/* ------------------------------- tool 3 ----------------------------------- */
+
+/** A render-produced image slot; `url` is what the agent fills in before applying. */
+const imageSlotSchema = z.object({
+  placeholder: z.string().min(1),
+  alt: z.string().optional().default(""),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  url: z.string().nullable().optional().default(null),
+});
+
+const applyImagesParamsSchema = z.object({
+  html: z.string().min(1),
+  images: z.array(imageSlotSchema),
+});
+
+app.post("/tools/apply_images", requireBearer, (req, res) => {
+  try {
+    const params = getParams(req.body) as Record<string, unknown>;
+    const { html, images } = applyImagesParamsSchema.parse(params);
+    const result = applyImages(html, images as ImageSlot[]);
+    res.json(result);
+  } catch (err) {
+    if (err instanceof ZodError) {
+      return res
+        .status(400)
+        .json({ error: "Invalid apply_images params", details: err.issues });
+    }
+    console.error("apply_images failed:", err);
+    res.status(500).json({ error: "apply_images failed." });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Opal landing-page tool on :${PORT}`);
   console.log(`  GET  /discovery`);
   console.log(`  POST /tools/get_landing_page_spec`);
   console.log(`  POST /tools/render_landing_page`);
+  console.log(`  POST /tools/apply_images`);
 });
 
 export { app };

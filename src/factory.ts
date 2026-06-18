@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { COMPONENTS, COMPONENT_TYPES } from "./components.js";
-import { esc } from "./html.js";
+import { esc, extractImageSlots, type ImageSlot } from "./html.js";
 
 /* ------------------------------ page config ------------------------------- */
 
@@ -96,13 +96,27 @@ const stylesheet = (theme: PageConfig["theme"]): string => `
 
 export interface RenderResult {
   html: string;
+  /** One slot per image placeholder emitted, in document order; url starts null. */
+  images: ImageSlot[];
   warnings: string[];
 }
 
 /**
+ * Handed back verbatim with every render so the agent keeps its hands off the
+ * HTML. RATIONALE: in production the agent only ever rewrote the rendered HTML
+ * because swapping image placeholders used to require editing the string. We
+ * removed that reason — images are surfaced as structured `ImageSlot`s and
+ * swapped by the deterministic `apply_images` tool — so there is no longer any
+ * cause for the model to touch the html.
+ */
+export const RENDER_INSTRUCTIONS =
+  "Return the html field to the user EXACTLY as provided. Do NOT edit, reformat, re-indent, summarize, or regenerate any part of it. The ONLY change permitted to the page is replacing image placeholders, and you do that by filling the url field of each item in images and calling apply_images — never by editing the html string yourself.";
+
+/**
  * Convert a validated PageConfig into a complete HTML document. Each section's
  * props are validated against its component schema here; an invalid section is
- * skipped and recorded as a warning rather than failing the whole page.
+ * skipped and recorded as a warning rather than failing the whole page. Every
+ * image placeholder emitted is also collected into `images` for apply_images.
  */
 export const renderPage = (config: PageConfig): RenderResult => {
   const warnings: string[] = [];
@@ -143,5 +157,8 @@ ${body}
 </body>
 </html>`;
 
-  return { html, warnings };
+  // Collect from the body only — placeholders only ever appear inside sections.
+  const images = extractImageSlots(body);
+
+  return { html, images, warnings };
 };
