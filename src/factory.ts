@@ -28,7 +28,41 @@ export const pageConfigSchema = z.object({
       })
     )
     .min(1),
-});
+  })
+  // Cross-section structural rules the per-component schemas can't see:
+  // navbar/hero/ctaBanner appear at most once; navbar (if any) is first; and
+  // hero (if any) is the first content section, i.e. right after a navbar or at the top.
+  .superRefine((cfg, ctx) => {
+    const types = cfg.sections.map((s) => s.type);
+    for (const once of ["navbar", "hero", "ctaBanner"] as const) {
+      if (types.filter((t) => t === once).length > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `"${once}" may appear at most once`,
+          path: ["sections"],
+        });
+      }
+    }
+    const navIdx = types.indexOf("navbar");
+    if (navIdx > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `"navbar" must be the first section`,
+        path: ["sections", navIdx, "type"],
+      });
+    }
+    const heroIdx = types.indexOf("hero");
+    if (heroIdx >= 0) {
+      const maxHeroIdx = types.includes("navbar") ? 1 : 0;
+      if (heroIdx > maxHeroIdx) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `"hero" must be the first content section (directly after navbar if present)`,
+          path: ["sections", heroIdx, "type"],
+        });
+      }
+    }
+  });
 
 export type PageConfig = z.infer<typeof pageConfigSchema>;
 
@@ -91,7 +125,70 @@ const stylesheet = (theme: PageConfig["theme"]): string => `
   .cta-banner { text-align: center; background: var(--accent); color: #fff; border-radius: 16px; }
   .cta-banner h2 { margin-top: 0; }
   .cta-banner .btn-primary { background: #fff; color: var(--accent); }
-  @media (max-width: 720px) { .hero { grid-template-columns: 1fr; } }
+
+  /* navbar */
+  .navbar { display: flex; align-items: center; gap: 2rem; max-width: 1100px; margin: 0 auto; padding: 1rem 1.5rem; }
+  .navbar-brand { font-weight: 700; font-size: 1.25rem; color: var(--accent); text-decoration: none; }
+  .navbar-links { display: flex; gap: 1.5rem; list-style: none; margin: 0; padding: 0; }
+  .navbar-links a { text-decoration: none; color: inherit; }
+  .navbar .btn { margin-left: auto; margin-right: 0; }
+
+  /* logoStrip */
+  .logo-strip { text-align: center; }
+  .logo-strip-heading { margin: 0 0 1.5rem; font-size: .875rem; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+  .logo-strip-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2.5rem; }
+  .logo-strip-item { display: inline-flex; align-items: center; }
+  .logo-strip-item .logo { height: 48px; width: auto; opacity: .65; filter: grayscale(1); transition: opacity .2s ease, filter .2s ease; }
+  .logo-strip-item .logo:hover { opacity: 1; filter: grayscale(0); }
+
+  /* stats */
+  .stats-row { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; }
+  .stat { flex: 1 1 8rem; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .stat-value { font-size: 2.75rem; font-weight: 700; line-height: 1.1; color: var(--accent); }
+  .stat-label { margin-top: .5rem; font-size: .95rem; color: #4b5563; }
+
+  /* featureGrid icon */
+  .feature-icon { display: block; width: 64px; height: 64px; margin-bottom: .75rem; }
+
+  /* pricingTable */
+  .pricing-tier { display: flex; flex-direction: column; }
+  .pricing-tier--highlighted { border: 2px solid var(--accent); box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+  .pricing-price { font-size: 2.5rem; font-weight: 700; margin: .5rem 0 1rem; }
+  .pricing-period { font-size: 1rem; font-weight: 400; color: #6b7280; }
+  .pricing-features { list-style: none; padding: 0; margin: 0 0 1.5rem; flex: 1; }
+  .pricing-features li { padding: .4rem 0; border-bottom: 1px solid #f1f3f7; }
+  .pricing-tier .btn { margin-top: auto; margin-right: 0; text-align: center; }
+
+  /* faq */
+  .faq-list { display: flex; flex-direction: column; gap: .75rem; max-width: 760px; margin: 0 auto; }
+  .faq-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem 1.25rem; }
+  .faq-item summary { cursor: pointer; font-weight: 600; list-style: none; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after { content: "+"; float: right; color: var(--accent); }
+  .faq-item[open] summary::after { content: "\\2212"; }
+  .faq-item p { margin: .75rem 0 0; color: #4b5563; }
+
+  /* gallery */
+  .gallery-item { margin: 0; }
+  .gallery-img { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .gallery-item figcaption { margin-top: .5rem; font-size: .9rem; color: #4b5563; }
+
+  /* richText prose */
+  .prose { max-width: 48rem; }
+  .prose p { margin: 0 0 1rem; line-height: 1.7; }
+
+  /* contactForm */
+  .contact-form { display: flex; flex-direction: column; gap: 1rem; max-width: 32rem; }
+  .form-field { display: flex; flex-direction: column; gap: .35rem; }
+  .form-field label { font-weight: 600; }
+  .form-field input, .form-field textarea { padding: .6rem .75rem; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+  .form-field textarea { min-height: 8rem; resize: vertical; }
+
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: 1fr; }
+    .navbar { flex-wrap: wrap; gap: 1rem; }
+    .navbar .btn { margin-left: 0; }
+  }
 `;
 
 export interface RenderResult {
