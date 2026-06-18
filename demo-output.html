@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Acme Analytics — Ship Faster</title>
-<meta name="description" content="Real-time product analytics for teams that move fast.">
-<meta property="og:title" content="Acme Analytics — Ship Faster">
+<title>Tracepoint — Trace-Native Observability for Distributed Systems</title>
+<meta name="description" content="Tracepoint correlates traces, logs, and metrics in a single timeline so engineers can find the root cause of a production incident in minutes, not hours.">
+<meta property="og:title" content="Tracepoint — Trace-Native Observability for Distributed Systems">
 <style>
-  :root { --accent: #7c3aed; --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  :root { --accent: #5B5BD6; --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: var(--font); color: #1a1a1a; line-height: 1.55; }
   img { max-width: 100%; height: auto; display: block; border-radius: 8px; background: #eef1f6; }
@@ -28,39 +28,287 @@
   .cta-banner { text-align: center; background: var(--accent); color: #fff; border-radius: 16px; }
   .cta-banner h2 { margin-top: 0; }
   .cta-banner .btn-primary { background: #fff; color: var(--accent); }
-  @media (max-width: 720px) { .hero { grid-template-columns: 1fr; } }
+
+  /* navbar */
+  .navbar { display: flex; align-items: center; gap: 2rem; max-width: 1100px; margin: 0 auto; padding: 1rem 1.5rem; }
+  .navbar-brand { font-weight: 700; font-size: 1.25rem; color: var(--accent); text-decoration: none; }
+  .navbar-links { display: flex; gap: 1.5rem; list-style: none; margin: 0; padding: 0; }
+  .navbar-links a { text-decoration: none; color: inherit; }
+  .navbar .btn { margin-left: auto; margin-right: 0; }
+
+  /* logoStrip */
+  .logo-strip { text-align: center; }
+  .logo-strip-heading { margin: 0 0 1.5rem; font-size: .875rem; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+  .logo-strip-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2.5rem; }
+  .logo-strip-item { display: inline-flex; align-items: center; }
+  .logo-strip-item .logo { height: 48px; width: auto; opacity: .65; filter: grayscale(1); transition: opacity .2s ease, filter .2s ease; }
+  .logo-strip-item .logo:hover { opacity: 1; filter: grayscale(0); }
+
+  /* stats */
+  .stats-row { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; }
+  .stat { flex: 1 1 8rem; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .stat-value { font-size: 2.75rem; font-weight: 700; line-height: 1.1; color: var(--accent); }
+  .stat-label { margin-top: .5rem; font-size: .95rem; color: #4b5563; }
+
+  /* featureGrid icon */
+  .feature-icon { display: block; width: 64px; height: 64px; margin-bottom: .75rem; }
+
+  /* pricingTable */
+  .pricing-tier { display: flex; flex-direction: column; }
+  .pricing-tier--highlighted { border: 2px solid var(--accent); box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+  .pricing-price { font-size: 2.5rem; font-weight: 700; margin: .5rem 0 1rem; }
+  .pricing-period { font-size: 1rem; font-weight: 400; color: #6b7280; }
+  .pricing-features { list-style: none; padding: 0; margin: 0 0 1.5rem; flex: 1; }
+  .pricing-features li { padding: .4rem 0; border-bottom: 1px solid #f1f3f7; }
+  .pricing-tier .btn { margin-top: auto; margin-right: 0; text-align: center; }
+
+  /* faq */
+  .faq-list { display: flex; flex-direction: column; gap: .75rem; max-width: 760px; margin: 0 auto; }
+  .faq-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem 1.25rem; }
+  .faq-item summary { cursor: pointer; font-weight: 600; list-style: none; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after { content: "+"; float: right; color: var(--accent); }
+  .faq-item[open] summary::after { content: "\2212"; }
+  .faq-item p { margin: .75rem 0 0; color: #4b5563; }
+
+  /* gallery */
+  .gallery-item { margin: 0; }
+  .gallery-img { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .gallery-item figcaption { margin-top: .5rem; font-size: .9rem; color: #4b5563; }
+
+  /* richText prose */
+  .prose { max-width: 48rem; }
+  .prose p { margin: 0 0 1rem; line-height: 1.7; }
+
+  /* contactForm */
+  .contact-form { display: flex; flex-direction: column; gap: 1rem; max-width: 32rem; }
+  .form-field { display: flex; flex-direction: column; gap: .35rem; }
+  .form-field label { font-weight: 600; }
+  .form-field input, .form-field textarea { padding: .6rem .75rem; border: 1px solid #ccc; border-radius: 6px; font: inherit; }
+  .form-field textarea { min-height: 8rem; resize: vertical; }
+
+  @media (max-width: 720px) {
+    .hero { grid-template-columns: 1fr; }
+    .navbar { flex-wrap: wrap; gap: 1rem; }
+    .navbar .btn { margin-left: 0; }
+  }
 </style>
 </head>
 <body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="/">Tracepoint</a>
+  <ul class="navbar-links">
+    <li><a href="/product">Product</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+    <li><a href="/changelog">Changelog</a></li>
+  </ul>
+  <a class="btn btn-primary" href="/signup">Start free</a>
+</nav>
+
 <section class="hero">
       <div class="hero-text">
-        <h1>Know what your users do — instantly</h1>
-        <p class="lead">Acme Analytics turns raw events into clear answers, so your team ships the right thing.</p>
+        <h1>Find the root cause of an incident in under 5 minutes</h1>
+        <p class="lead">Tracepoint stitches every trace, log line, and metric into one timeline keyed by request ID, so on-call stops tab-hopping between four dashboards during an outage. Instrument once with OpenTelemetry and see the full path of any request across every service.</p>
         <div class="hero-ctas">
-        <a class="btn btn-primary" href="/signup">Start free</a>
-        <a class="btn btn-secondary" href="/demo">Book a demo</a>
+        <a class="btn btn-primary" href="/signup">Start free — no card</a>
+        <a class="btn btn-secondary" href="/docs">Read the docs</a>
         </div>
       </div>
-      <div class="hero-media"><img src="{{IMAGE:1200x600:dashboard-showing-a-live-user-activity-c}}" alt="dashboard showing a live user activity chart" width="1200" height="600" loading="lazy" class="hero-img"></div>
+      <div class="hero-media"><img src="{{IMAGE:1200x600:dark-mode-incident-timeline-showing-a-sl}}" alt="Dark-mode incident timeline showing a slow checkout request expanded into a waterfall of database, cache, and payment-API spans, with the 1.8s latency spike highlighted in violet" width="1200" height="600" loading="lazy" class="hero-img"></div>
     </section>
 
+
+<section class="logo-strip">
+  <p class="logo-strip-heading">Trusted by platform teams shipping at scale</p>
+  <div class="logo-strip-row">
+    
+    <div class="logo-strip-item" title="Northwind Freight">
+      <img src="{{IMAGE:160x48:northwind-freight-wordmark-in-monochrome}}" alt="Northwind Freight wordmark in monochrome" width="160" height="48" loading="lazy" class="logo">
+    </div>
+    <div class="logo-strip-item" title="Cobalt Health">
+      <img src="{{IMAGE:160x48:cobalt-health-logo-with-a-single-line-ca}}" alt="Cobalt Health logo with a single-line caduceus mark" width="160" height="48" loading="lazy" class="logo">
+    </div>
+    <div class="logo-strip-item" title="Lumen Retail">
+      <img src="{{IMAGE:160x48:lumen-retail-lowercase-wordmark}}" alt="Lumen Retail lowercase wordmark" width="160" height="48" loading="lazy" class="logo">
+    </div>
+    <div class="logo-strip-item" title="Parallax Games">
+      <img src="{{IMAGE:160x48:parallax-games-stacked-logotype}}" alt="Parallax Games stacked logotype" width="160" height="48" loading="lazy" class="logo">
+    </div>
+    <div class="logo-strip-item" title="Meridian Bank">
+      <img src="{{IMAGE:160x48:meridian-bank-serif-wordmark}}" alt="Meridian Bank serif wordmark" width="160" height="48" loading="lazy" class="logo">
+    </div>
+  </div>
+</section>
+
+
+<section class="stats">
+  <h2 class="section-heading">What teams see after switching</h2>
+  <div class="stats-row">
+    <div class="stat">
+      <span class="stat-value">73%</span>
+      <span class="stat-label">lower mean time to resolution in the first 90 days</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">4.2T</span>
+      <span class="stat-label">spans ingested across customer fleets each month</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">30s</span>
+      <span class="stat-label">median lag from event to searchable in the UI</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">99.95%</span>
+      <span class="stat-label">ingest API uptime over the trailing 12 months</span>
+    </div>
+  </div>
+</section>
+
+
 <section class="features">
-      <h2 class="section-heading">Why teams choose Acme</h2>
+  <h2 class="section-heading">Built for the engineer holding the pager</h2>
+  <div class="grid">
+    <div class="card">
+      <img src="{{IMAGE:64x64:split-pane-view-with-a-latency-line-char}}" alt="Split-pane view with a latency line chart on top and the matching trace waterfall and log lines synced below it on a shared time cursor" width="64" height="64" loading="lazy" class="feature-icon">
+      <h3>One timeline, three signals</h3>
+      <p>Traces, logs, and metrics share a single time axis keyed by trace ID. Click a latency spike on a chart and jump straight to the exact spans and log lines that produced it.</p>
+    </div>
+    <div class="card">
+      
+      <h3>Drop-in OpenTelemetry</h3>
+      <p>Point your existing OTLP exporter at our endpoint and data flows in within seconds. No proprietary agent, no per-language SDK rewrite, and no vendor lock-in on your instrumentation.</p>
+    </div>
+    <div class="card">
+      <img src="{{IMAGE:64x64:funnel-diagram-showing-100%25-of-raw-spans}}" alt="Funnel diagram showing 100% of raw spans on the left narrowing to a retained slice of error and high-latency traces on the right" width="64" height="64" loading="lazy" class="feature-icon">
+      <h3>Pay for what you keep</h3>
+      <p>Tail-based sampling keeps every errored and slow trace while discarding the noise, so you store the 5% that matters. Most teams cut ingest volume by half without losing a single failing request.</p>
+    </div>
+    <div class="card">
+      
+      <h3>Alerts that point at a cause</h3>
+      <p>Define SLOs on any span attribute and get paged with the offending trace already attached. The alert links to the slowest exemplar, so on-call starts debugging instead of searching.</p>
+    </div>
+    <div class="card">
+      <img src="{{IMAGE:64x64:node-and-edge-service-dependency-map-wit}}" alt="Node-and-edge service dependency map with edge thickness scaled by request volume and two edges flagged red for elevated error rate" width="64" height="64" loading="lazy" class="feature-icon">
+      <h3>Service map from real traffic</h3>
+      <p>We build a live dependency graph from actual request paths, not a static config file. Spot a newly introduced N+1 query or a service talking to a database it never touched before.</p>
+    </div>
+    <div class="card">
+      
+      <h3>Query in plain SQL</h3>
+      <p>Run ad-hoc queries against raw span data with the SQL you already know — no custom query language to learn. Save any query as a dashboard panel or an alert in one click.</p>
+    </div>
+  </div>
+</section>
+
+<section class="testimonial">
+      <blockquote>&ldquo;We replaced three separate tools with Tracepoint and our on-call rotation stopped dreading 2 a.m. pages. Last quarter a checkout regression that used to take an hour to trace was root-caused in four minutes — the slow span was right there on the alert. It paid for itself the first time it saved us a midnight bridge call.&rdquo;</blockquote>
+      <p class="attribution"><strong>Priya Nadkarni</strong> &middot; Staff Engineer, Platform Reliability at Lumen Retail</p>
+    </section>
+
+
+    <section class="pricing">
+      <h2 class="section-heading">Pricing that scales with your span volume, not your headcount</h2>
       <div class="grid">
-        <div class="card"><h3>Live dashboards</h3><p>See events the moment they happen, no batch delays.</p></div>
-        <div class="card"><h3>No-code funnels</h3><p>Build conversion funnels by dragging and dropping steps.</p></div>
-        <div class="card"><h3>Privacy-first</h3><p>EU-hosted, GDPR-ready, and cookieless by default.</p></div>
+        
+        <div class="card pricing-tier">
+          <h3>Hobby</h3>
+          <p class="pricing-price">$0<span class="pricing-period">forever</span></p>
+          <ul class="pricing-features">
+            <li>50M spans per month</li>
+            <li>7-day retention</li>
+            <li>3 user seats</li>
+            <li>OpenTelemetry ingest</li>
+            <li>Community Slack support</li>
+          </ul>
+          <a class="btn btn-secondary" href="/signup">Start free</a>
+        </div>
+        <div class="card pricing-tier pricing-tier--highlighted">
+          <h3>Team</h3>
+          <p class="pricing-price">$99<span class="pricing-period">/month</span></p>
+          <ul class="pricing-features">
+            <li>Everything in Hobby, plus:</li>
+            <li>1B spans per month</li>
+            <li>30-day retention</li>
+            <li>Unlimited seats</li>
+            <li>Tail-based sampling</li>
+            <li>SLO alerting with PagerDuty integration</li>
+            <li>Email and chat support</li>
+          </ul>
+          <a class="btn btn-primary" href="/signup?plan=team">Start 14-day trial</a>
+        </div>
+        <div class="card pricing-tier">
+          <h3>Enterprise</h3>
+          <p class="pricing-price">Custom<span class="pricing-period">annual contract</span></p>
+          <ul class="pricing-features">
+            <li>Everything in Team, plus:</li>
+            <li>Unlimited spans</li>
+            <li>Custom retention up to 13 months</li>
+            <li>SAML SSO and full audit logs</li>
+            <li>Dedicated ingest region (US or EU)</li>
+            <li>99.95% uptime SLA</li>
+            <li>Named solutions engineer</li>
+          </ul>
+          <a class="btn btn-secondary" href="/contact">Talk to sales</a>
+        </div>
       </div>
     </section>
 
-<section class="testimonial">
-      <blockquote>&ldquo;We cut our reporting time from days to minutes.&rdquo;</blockquote>
-      <p class="attribution"><strong>Jordan Lee</strong> &middot; Head of Growth, Northwind</p>
+
+<section class="faq">
+  <h2 class="section-heading">Questions engineers ask before they sign up</h2>
+  <div class="faq-list">
+    <details class="faq-item">
+      <summary>Do I have to replace my existing instrumentation?</summary>
+      <p>No. Tracepoint speaks native OTLP, so if you already emit OpenTelemetry you just change the export endpoint and add an API key. If you haven&#39;t instrumented yet, our auto-instrumentation libraries cover the common frameworks for Go, Java, Node, Python, and Ruby, and most teams see their first trace within ten minutes.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How does billing work if my traffic spikes?</summary>
+      <p>You&#39;re billed on spans ingested after sampling, not raw volume, and tail-based sampling keeps that number predictable by dropping healthy noise. If you exceed your plan&#39;s monthly allotment we keep ingesting and bill the overage at a flat per-million rate — we never silently drop your error traces.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Where is my data stored and who can see it?</summary>
+      <p>Data is encrypted in transit and at rest and stored in the region you choose at signup, with US and EU options on every paid plan. Enterprise customers can pin a dedicated ingest region and get SAML SSO plus full audit logging of every query run against their data.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Can I export my data or take it with me if I leave?</summary>
+      <p>Yes. Raw spans are queryable over SQL and exportable to Parquet at any time, and our ingest format is standard OTLP with no proprietary lock-in. Cancel whenever you like — there are no annual commitments on the Hobby or Team plans.</p>
+    </details>
+  </div>
+</section>
+
+
+    <section class="contact">
+      <h2 class="section-heading">Talk to an engineer about your stack</h2>
+      <form class="contact-form" action="/api/contact" method="post">
+        <div class="form-field">
+          <label for="name">Full name</label>
+          <input id="name" name="name" type="text" required />
+        </div>
+        <div class="form-field">
+          <label for="email">Work email</label>
+          <input id="email" name="email" type="email" required />
+        </div>
+        <div class="form-field">
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" />
+        </div>
+        <div class="form-field">
+          <label for="spanVolume">Approximate monthly span volume</label>
+          <input id="spanVolume" name="spanVolume" type="text" />
+        </div>
+        <div class="form-field">
+          <label for="message">What are you trying to debug faster?</label>
+          <textarea id="message" name="message" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Request a demo</button>
+      </form>
     </section>
 
 <section class="cta-banner">
-      <h2>Ready to see your data clearly?</h2>
-      <a class="btn btn-primary" href="/signup">Start free</a>
+      <h2>Ship your first trace in the next ten minutes</h2>
+      <a class="btn btn-primary" href="/signup">Start free — no card required</a>
     </section>
 </body>
 </html>
