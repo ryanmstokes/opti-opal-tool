@@ -1,14 +1,17 @@
 import { z } from "zod";
 import { esc, placeholderImg } from "./html.js";
+import { link, richTextHtml } from "./cmsHelpers.js";
 
 /**
  * A Component is the single source of truth for one building block:
  *   - `schema`   validates the props the AI provides
  *   - `manifest` is the human/AI-readable description of those props
  *   - `render`   turns validated props into an HTML fragment
+ *   - `cms`      (optional) maps the component to an Optimizely CMS content type
  *
- * Because the manifest and the renderer live in the same object, they cannot
- * drift apart. The factory and the AI prompt both derive from this registry.
+ * Because the manifest, renderer and CMS mapping live in the same object, they
+ * cannot drift apart. The factory, the AI prompt and the CMS type generator all
+ * derive from this registry.
  */
 export interface PropSpec {
   name: string;
@@ -24,12 +27,60 @@ export interface PropSpec {
   description: string;
 }
 
+/* ------------------------------ CMS metadata ------------------------------ */
+
+/**
+ * CMS property types we emit. Mostly the brief's set; "boolean" is added because
+ * LpPricingTier.highlighted needs it (Optimizely supports a boolean property).
+ */
+export type CmsPropType =
+  | "string"
+  | "richText"
+  | "link"
+  | "boolean"
+  | "contentReference"
+  | "contentArea"
+  | "linkCollection"
+  | "stringList";
+
+export interface CmsPropDef {
+  name: string;
+  cmsType: CmsPropType;
+  /** For contentReference / contentArea: the CMS type keys this accepts. */
+  allowedTypes?: string[];
+  /** For contentArea: the item content-type key its entries are built as. */
+  itemType?: string;
+}
+
+/**
+ * CMS descriptor for a page-level component. `typeKey` is the SINGLE place a
+ * component's CMS type name is defined — a Phase-7 rename (e.g. mapping onto an
+ * existing Hero block) is a one-line change here. `mapProps` turns validated
+ * props into CMS-ready property VALUES, applying the gotchas (links as objects,
+ * lists as arrays, refs as bare strings, richText as HTML).
+ */
+export interface CmsComponentDef<TProps = unknown> {
+  typeKey: string;
+  baseType?: "_component";
+  compositionBehaviors?: string[];
+  properties: CmsPropDef[];
+  mapProps: (props: TProps) => Record<string, unknown>;
+}
+
+/** A broken-out item content type used inside a parent's content area. */
+export interface CmsItemTypeDef {
+  typeKey: string;
+  baseType: "_component";
+  properties: CmsPropDef[];
+}
+
 export interface Component<TProps> {
   type: string;
   description: string;
   props: PropSpec[];
   schema: z.ZodType<TProps>;
   render: (props: TProps) => string;
+  cms?: CmsComponentDef<TProps>;
 }
 
 const def = <TProps>(c: Component<TProps>): Component<TProps> => c;
@@ -53,6 +104,17 @@ const linkSchema = z.object({
   label: z.string().min(1),
   href: hrefSchema,
 });
+
+/*
+ * v1 CMS LIST-MODELLING DECISION (confirmed with stakeholder):
+ *   - BROKEN OUT as real item _component types in content areas (fully editable):
+ *       featureGrid → LpFeature, pricingTable → LpPricingTier, gallery → LpGalleryImage
+ *   - COLLAPSED onto the parent as richText / stringList (fewer types for v1):
+ *       stats, faq, navbar links, logoStrip logos, contactForm fields
+ * Rationale: fewer CMS types to create/maintain for v1; the broken-out three are
+ * the ones whose items most benefit from independent editing. Each collapse is a
+ * known tradeoff with a documented Phase-8 upgrade path (see per-component notes).
+ */
 
 /* -------------------------------- navbar ---------------------------------- */
 
@@ -80,6 +142,26 @@ const navbar = def({
   </ul>
   ${props.cta ? `<a class="btn btn-${esc(props.cta.style)}" href="${esc(props.cta.href)}">${esc(props.cta.label)}</a>` : ""}
 </nav>`,
+  // v1 collapses links to a stringList of "Label|href". Phase-8 upgrade: model
+  // `links` as a native linkCollection (structured, no extra content type).
+  cms: {
+    typeKey: "LpNavbar",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "brandName", cmsType: "string" },
+      { name: "links", cmsType: "stringList" },
+      { name: "cta", cmsType: "link" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        brandName: p.brandName,
+        links: p.links.map((l) => `${l.label}|${l.href}`),
+      };
+      if (p.cta) out.cta = link(p.cta.label, p.cta.href);
+      return out;
+    },
+  },
 });
 
 /* ------------------------------- hero ------------------------------------ */
@@ -116,6 +198,28 @@ const hero = def({
       </div>
       ${img ? `<div class="hero-media">${img}</div>` : ""}
     </section>`;
+  },
+  // heroImage is left unset in v1 (the editor fills it via the asset picker); the
+  // payload builder emits a warning listing the image described by imageAlt.
+  cms: {
+    typeKey: "LpHero",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "headline", cmsType: "string" },
+      { name: "subheadline", cmsType: "string" },
+      { name: "heroImage", cmsType: "contentReference", allowedTypes: ["_image"] },
+      { name: "primaryCta", cmsType: "link" },
+      { name: "secondaryCta", cmsType: "link" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = { headline: p.headline };
+      if (p.subheadline) out.subheadline = p.subheadline;
+      const ctas = p.ctas ?? [];
+      if (ctas[0]) out.primaryCta = link(ctas[0].label, ctas[0].href);
+      if (ctas[1]) out.secondaryCta = link(ctas[1].label, ctas[1].href);
+      return out;
+    },
   },
 });
 
@@ -167,6 +271,23 @@ const logoStrip = def({
       .join("")}
   </div>
 </section>`,
+  // v1 collapses logos to a stringList of names; the logo IMAGES are left for the
+  // editor (warned). Phase-8 upgrade: break out LpLogo (logo:contentReference,
+  // name:string) into a content area so each logo holds its real asset.
+  cms: {
+    typeKey: "LpLogoStrip",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "logos", cmsType: "stringList" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = { logos: p.logos.map((l) => l.name) };
+      if (p.heading) out.heading = p.heading;
+      return out;
+    },
+  },
 });
 
 /* -------------------------------- stats ----------------------------------- */
@@ -215,6 +336,24 @@ const stats = def({
       .join("\n    ")}
   </div>
 </section>`,
+  // v1 collapses metrics to a stringList of "value — label". Phase-8 upgrade:
+  // break out LpStat (value:string, label:string) into a content area.
+  cms: {
+    typeKey: "LpStats",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "items", cmsType: "stringList" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        items: p.items.map((s) => `${s.value} — ${s.label}`),
+      };
+      if (p.heading) out.heading = p.heading;
+      return out;
+    },
+  },
 });
 
 /* ----------------------------- featureGrid -------------------------------- */
@@ -255,6 +394,27 @@ const featureGrid = def({
       .join("\n    ")}
   </div>
 </section>`,
+  // BROKEN OUT: each feature is an LpFeature item in a content area, so a
+  // marketer edits/reorders features individually. Per-feature icon is unset in v1.
+  cms: {
+    typeKey: "LpFeatureGrid",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "features", cmsType: "contentArea", itemType: "LpFeature", allowedTypes: ["LpFeature"] },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        features: p.features.map((f) => ({
+          contentType: "LpFeature",
+          content: { title: f.title, body: richTextHtml(f.body) },
+        })),
+      };
+      if (p.heading) out.heading = p.heading;
+      return out;
+    },
+  },
 });
 
 /* ------------------------------ testimonial ------------------------------- */
@@ -280,6 +440,24 @@ const testimonial = def({
         p.role ? ` &middot; ${esc(p.role)}` : ""
       }</p>
     </section>`,
+  cms: {
+    typeKey: "LpTestimonial",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "quote", cmsType: "richText" },
+      { name: "author", cmsType: "string" },
+      { name: "role", cmsType: "string" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        quote: richTextHtml(p.quote),
+        author: p.author,
+      };
+      if (p.role) out.role = p.role;
+      return out;
+    },
+  },
 });
 
 /* ----------------------------- pricingTable ------------------------------- */
@@ -342,6 +520,37 @@ const pricingTable = def({
           .join("")}
       </div>
     </section>`,
+  // BROKEN OUT: each tier is an LpPricingTier item in a content area. Its feature
+  // lines become a stringList; cta a Link object; highlighted a boolean.
+  cms: {
+    typeKey: "LpPricingTable",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "tiers", cmsType: "contentArea", itemType: "LpPricingTier", allowedTypes: ["LpPricingTier"] },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        tiers: p.tiers.map((t) => ({
+          contentType: "LpPricingTier",
+          content: {
+            name: t.name,
+            price: t.price,
+            period: t.period ?? "",
+            features: t.features
+              .split("\n")
+              .map((x) => x.trim())
+              .filter((x) => x.length > 0),
+            cta: link(t.cta.label, t.cta.href),
+            highlighted: t.highlighted,
+          },
+        })),
+      };
+      if (p.heading) out.heading = p.heading;
+      return out;
+    },
+  },
 });
 
 /* --------------------------------- faq ------------------------------------ */
@@ -389,6 +598,28 @@ const faq = def({
       .join("\n    ")}
   </div>
 </section>`,
+  // v1 collapses the Q&A pairs to a single richText blob (the marketer edits FAQs
+  // as HTML rather than discrete items). KNOWN TRADEOFF, not an accident — the
+  // obvious Phase-8 upgrade is to break out LpFaqItem (question:string,
+  // answer:richText) into a content area for per-item editing.
+  cms: {
+    typeKey: "LpFaq",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "faqs", cmsType: "richText" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        faqs: p.items
+          .map((i) => `<h3>${esc(i.question)}</h3>${richTextHtml(i.answer)}`)
+          .join(""),
+      };
+      if (p.heading) out.heading = p.heading;
+      return out;
+    },
+  },
 });
 
 /* ------------------------------- gallery ---------------------------------- */
@@ -437,6 +668,28 @@ const gallery = def({
       .join("\n    ")}
   </div>
 </section>`,
+  // BROKEN OUT: each image is an LpGalleryImage item in a content area. The image
+  // ref itself is unset in v1 (editor fills it); the caption is carried through.
+  cms: {
+    typeKey: "LpGallery",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "images", cmsType: "contentArea", itemType: "LpGalleryImage", allowedTypes: ["LpGalleryImage"] },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        images: p.images.map((img) => {
+          const content: Record<string, unknown> = {};
+          if (img.caption) content.caption = img.caption;
+          return { contentType: "LpGalleryImage", content };
+        }),
+      };
+      if (p.heading) out.heading = p.heading;
+      return out;
+    },
+  },
 });
 
 /* ------------------------------- richText --------------------------------- */
@@ -464,6 +717,20 @@ const richText = def({
       ${props.heading ? `<h2 class="section-heading">${esc(props.heading)}</h2>` : ""}
       ${paragraphs}
     </section>`;
+  },
+  cms: {
+    typeKey: "LpRichText",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "body", cmsType: "richText" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = { body: richTextHtml(p.html) };
+      if (p.heading) out.heading = p.heading;
+      return out;
+    },
   },
 });
 
@@ -503,6 +770,28 @@ const contactForm = def({
         <button type="submit" class="btn btn-primary">${esc(submitLabel)}</button>
       </form>
     </section>`,
+  // v1 collapses fields to a stringList of "label|type|required". Phase-8 upgrade:
+  // break out LpFormField (name, label, fieldType, required) into a content area.
+  cms: {
+    typeKey: "LpContactForm",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "fields", cmsType: "stringList" },
+      { name: "submitLabel", cmsType: "string" },
+      { name: "action", cmsType: "string" },
+    ],
+    mapProps: (p) => {
+      const out: Record<string, unknown> = {
+        fields: p.fields.map((f) => `${f.label}|${f.type}|${f.required ? "required" : "optional"}`),
+        submitLabel: p.submitLabel,
+      };
+      if (p.heading) out.heading = p.heading;
+      if (p.action) out.action = p.action;
+      return out;
+    },
+  },
 });
 
 /* --------------------------------- ctaBanner ------------------------------ */
@@ -524,14 +813,66 @@ const ctaBanner = def({
       <h2>${esc(p.heading)}</h2>
       <a class="btn btn-${esc(p.cta.style)}" href="${esc(p.cta.href)}">${esc(p.cta.label)}</a>
     </section>`,
+  cms: {
+    typeKey: "LpCtaBanner",
+    baseType: "_component",
+    compositionBehaviors: ["sectionEnabled"],
+    properties: [
+      { name: "heading", cmsType: "string" },
+      { name: "cta", cmsType: "link" },
+    ],
+    mapProps: (p) => ({
+      heading: p.heading,
+      cta: link(p.cta.label, p.cta.href),
+    }),
+  },
 });
+
+/* --------------------------- item content types --------------------------- */
+
+/**
+ * Broken-out item _component types referenced by parent content areas. These are
+ * NOT page-level components (no `sectionEnabled`, no render) — they live inside a
+ * parent's content area. The type generator emits each of these BEFORE its parent.
+ */
+export const ITEM_CMS_TYPES: CmsItemTypeDef[] = [
+  {
+    typeKey: "LpFeature",
+    baseType: "_component",
+    properties: [
+      { name: "title", cmsType: "string" },
+      { name: "body", cmsType: "richText" },
+      { name: "icon", cmsType: "contentReference", allowedTypes: ["_image"] },
+    ],
+  },
+  {
+    typeKey: "LpPricingTier",
+    baseType: "_component",
+    properties: [
+      { name: "name", cmsType: "string" },
+      { name: "price", cmsType: "string" },
+      { name: "period", cmsType: "string" },
+      { name: "features", cmsType: "stringList" },
+      { name: "cta", cmsType: "link" },
+      { name: "highlighted", cmsType: "boolean" },
+    ],
+  },
+  {
+    typeKey: "LpGalleryImage",
+    baseType: "_component",
+    properties: [
+      { name: "image", cmsType: "contentReference", allowedTypes: ["_image"] },
+      { name: "caption", cmsType: "string" },
+    ],
+  },
+];
 
 /* ------------------------------- registry --------------------------------- */
 
 /**
  * All components, keyed by type. Add a component here and the manifest, prompt,
- * factory (and, from Phase 2, the CMS type definitions) all pick it up. Ordered
- * roughly by where each tends to appear on a page so the manifest reads well.
+ * factory and CMS type definitions all pick it up. Ordered roughly by where each
+ * tends to appear on a page so the manifest reads well.
  */
 export const COMPONENTS: Record<string, Component<any>> = {
   navbar,
