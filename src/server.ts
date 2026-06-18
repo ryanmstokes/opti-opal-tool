@@ -47,7 +47,7 @@ app.get("/discovery", (_req, res) => {
       {
         name: "get_landing_page_spec",
         description:
-          "Returns the component manifest, the page config shape, the authoring rules, and a worked example. Call this FIRST to learn how to build a landing page config, then build a config and pass it to render_landing_page.",
+          "Returns the component manifest, page config shape, authoring rules and a worked example. Call first.",
         endpoint: "/tools/get_landing_page_spec",
         http_method: "POST",
         parameters: [],
@@ -55,15 +55,14 @@ app.get("/discovery", (_req, res) => {
       {
         name: "render_landing_page",
         description:
-          "Renders a landing page config into a complete, styled, self-contained HTML document. Returns { html, images, warnings, instructions }. Images are emitted as {{IMAGE:WxH:slug}} placeholders and listed in `images` (one slot per placeholder, url:null). You MUST return the html to the user EXACTLY as provided — do not edit, reformat or regenerate it. The ONLY permitted change is replacing image placeholders, which you do by filling each image's `url` and calling apply_images — never by editing the html yourself. See the `instructions` field.",
+          "Renders a page config to a complete HTML document. Returns { html, images, warnings, instructions }. Return the html verbatim; the only allowed change is replacing image placeholders via apply_images.",
         endpoint: "/tools/render_landing_page",
         http_method: "POST",
         parameters: [
           {
             name: "config",
             type: "object",
-            description:
-              "A page config object: { title, description?, theme?, sections[] }. See get_landing_page_spec for the exact shape and rules.",
+            description: "Page config: { title, description?, theme?, sections[] }. See get_landing_page_spec.",
             required: true,
           },
         ],
@@ -71,29 +70,38 @@ app.get("/discovery", (_req, res) => {
       {
         name: "apply_images",
         description:
-          "Deterministically replaces {{IMAGE:WxH:slug}} placeholders in a rendered page with real asset URLs. Pass the html from render_landing_page and the same images array with each url filled in (leave url null for any image you don't have yet). Returns { html, warnings }; warnings list any placeholder left unresolved. This is the ONLY way to put images into the page — do NOT edit the html string by hand.",
+          "Replaces {{IMAGE:WxH:slug}} placeholders with real image URLs. Pass the html from render_landing_page and its images array with each url filled. Returns { html, warnings }.",
         endpoint: "/tools/apply_images",
         http_method: "POST",
         parameters: [
           {
             name: "html",
             type: "string",
-            description: "The exact html string returned by render_landing_page.",
+            description: "The html returned by render_landing_page.",
             required: true,
           },
           {
             name: "images",
             type: "array",
-            description:
-              "The images array from render_landing_page, each item { placeholder, alt, width, height, url }. Fill `url` for images you have; leave null otherwise.",
+            description: "The images array from render_landing_page, each url filled (null if unknown).",
             required: true,
+            items: {
+              type: "object",
+              properties: {
+                placeholder: { type: "string" },
+                alt: { type: "string" },
+                width: { type: "integer" },
+                height: { type: "integer" },
+                url: { type: "string" },
+              },
+            },
           },
         ],
       },
       {
         name: "get_cms_content_types",
         description:
-          "ONE-TIME SETUP for the CMS path. Returns the ordered Optimizely CMS content-type definitions (Lp* _component types and the LpExperience type) derived from the component library, plus the exact create order. Use this when the user wants the landing page as EDITABLE CMS content (Visual Builder) rather than just HTML. Pass each definition to the cms_create_content_type system tool IN ORDER — item/component types before the experience — then build the page config and call build_cms_experience. You only need to run this once per CMS instance.",
+          "One-time setup. Returns ordered CMS content-type definitions and the create order. Pass each to cms_create_content_type in order, then call build_cms_experience.",
         endpoint: "/tools/get_cms_content_types",
         http_method: "POST",
         parameters: [],
@@ -101,35 +109,32 @@ app.get("/discovery", (_req, res) => {
       {
         name: "build_cms_experience",
         description:
-          "Turns a landing page config into the exact cms_update_content_item payload for an editable Optimizely Experience (its Visual Builder composition holds one editable component per section). Use this AFTER the content types exist (see get_cms_content_types) when the user wants the page as CMS content. Returns { upsert, warnings, instructions }: pass `upsert` to cms_update_content_item, then cms_publish_content_item. Do NOT stringify Properties yourself and do NOT edit the composition — it is already correctly serialized.",
+          "Turns a config into the cms_update_content_item upsert for an editable Optimizely Experience. Returns { upsert, warnings, instructions }.",
         endpoint: "/tools/build_cms_experience",
         http_method: "POST",
         parameters: [
           {
             name: "config",
             type: "object",
-            description:
-              "The page config (same shape as render_landing_page). See get_landing_page_spec.",
+            description: "Page config (same shape as render_landing_page).",
             required: true,
           },
           {
             name: "routeSegment",
             type: "string",
-            description: "URL segment for the page, e.g. \"tracepoint\".",
+            description: "URL segment, e.g. \"tracepoint\".",
             required: true,
           },
           {
             name: "locale",
             type: "string",
-            description:
-              "Locale code from the CMS's enabledLocales. Defaults to \"en\". Do not invent codes.",
+            description: "Locale from enabledLocales; defaults to \"en\".",
             required: false,
           },
           {
             name: "container",
             type: "string",
-            description:
-              "Optional parent container reference/GUID where the experience is created.",
+            description: "Optional parent container reference.",
             required: false,
           },
         ],
